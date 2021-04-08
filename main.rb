@@ -46,8 +46,12 @@ class Card
         @type = type
     end
     
+    def has_same_month?(card)
+        card.has_month?(@month)
+    end
+    
     def has_month?(month)
-        @month === month
+        @month == month
     end
     
     def has_type?(card_type)
@@ -57,6 +61,9 @@ class Card
     def info
         "month:#{@month}, type:#{@type}"
     end
+    
+
+
 end
 
 
@@ -70,11 +77,14 @@ end
 
 class Deck
     def initialize
-        @cards = Range.new(1,10).map{|i| Card.new(i, CardType::STRIP)}
+        @cards = [] 
+        4.times do 
+            @cards.push *Range.new(1,12).map{|i| Card.new(i, CardType::NORMAL)}
+        end
     end
     
     def add_card(card)
-        @cards << card_dto
+        @cards << card
     end
     
     def get_card
@@ -101,12 +111,12 @@ class Field
         @cards_hash[empty_position] = card 
     end
     
-    def available_positions(target_month)
-        @cards_hash.select {|position, card| card&.has_month?(target_month)}.keys
+    def available_positions(put_card)
+        @cards_hash.select {|position, card| card&.has_same_month?(put_card)}.keys
     end
     
-    def remove_card(target_month:0, position:0)
-        raise RuntimeError.new("target_month=#{target_month}のカードはposition:#{position}にありません") unless self.available_positions(target_month).include?(position)
+    def remove_card(put_card:0, position:0)
+        raise RuntimeError.new("対象のカードと同月のカードはposition:#{position}にありません") unless self.available_positions(put_card).include?(position)
         temp = @cards_hash[position]
         @cards_hash[position] = nil
         temp
@@ -147,21 +157,51 @@ class DrawUseCase
     end
 end
 
+class PutHandUseCase
+    def initialize(hand, field)
+        @hand = hand
+        @field = field
+    end
+    
+    def execute(hand_index:0, field_index:0)
+        hand_card = @hand.remove_card(hand_index)
+        field_card = @field.remove_card(put_card: hand_card, position: field_index)
+        [hand_card, field_card]
+    end
+end
+
+class DeckToFieldUseCase
+    def initialize(deck, field)
+        @deck = deck
+        @field = field
+    end
+    
+    def execute
+        deck_card = @deck.get_card
+        @field.add_card(deck_card)
+    end
+end
+
 deck = Deck.new
 field = Field.new
 hand = Hand.new
 
 draw = DrawUseCase.new(hand, deck)
+deck_to_field = DeckToFieldUseCase.new(deck, field)
+put_hand = PutHandUseCase.new(hand, field) 
 
 8.times do
     draw.execute
 end
 
+8.times do
+    deck_to_field.execute
+end
 
-
-
-
-
-
-
+puts hand.info
+puts '#####'
+puts field.info
+puts put_hand.execute(hand_index: 0, field_index: 5)
+puts hand.info
+puts field.info
 
