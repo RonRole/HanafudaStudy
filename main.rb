@@ -117,16 +117,51 @@ class Field
     end
 end
 
+class Hand
+    def initialize
+        @cards = []
+    end
+    
+    def add_card(card)
+        @cards << card
+    end
+    
+    def remove_card(index)
+        @cards.delete_at(index)
+    end
+    
+    def info
+        @cards.map {|card| card.info}
+    end
+end
+
+class DrawUseCase
+    def initialize(hand, deck)
+        @hand = hand
+        @deck = deck
+    end
+    
+    def execute
+        card = @deck.get_card
+        @hand.add_card(card)
+    end
+end
+
 deck = Deck.new
 field = Field.new
+hand = Hand.new
 
-card = deck.get_card
-card2 = deck.get_card
+draw = DrawUseCase.new(hand, deck)
 
-field.add_card(card)
-field.add_card(card2)
+8.times do
+    draw.execute
+end
 
-puts field.available_positions(1)
-field.remove_card(position:2, target_month:2)
-puts field.info
+
+
+
+
+
+
+
 
