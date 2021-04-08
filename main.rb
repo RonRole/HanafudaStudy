@@ -1,5 +1,3 @@
-# Your code here!
-# Your code here!
 module Result
     def self.all
         self.constants.map {|constant| eval("Result::#{constant}")}
