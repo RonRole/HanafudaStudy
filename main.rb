@@ -1,5 +1,3 @@
-# Your code here!
-# Your code here!
 module Result
     def self.all
         self.constants.map {|constant| eval("Result::#{constant}")}
@@ -77,11 +75,8 @@ end
 
 
 class Deck
-    def initialize
-        @cards = [] 
-        4.times do 
-            @cards.push *Range.new(1,12).map{|i| Card.new(i, CardType::NORMAL)}
-        end
+    def initialize(cards)
+        @cards = cards
     end
     
     def add_card(card)
@@ -94,16 +89,9 @@ class Deck
 end
 
 class Field
-    def initialize
-        @cards_hash = {
-            1 => nil,
-            2 => nil,
-            3 => nil,
-            4 => nil,
-            5 => nil,
-            6 => nil,
-            7 => nil,
-            8 => nil
+    def initialize(cards)
+        @cards_hash = Range.new(0,7).each_with_object({}){|i, result|
+            result[i+1] = cards[i]
         }
     end
     
@@ -120,7 +108,7 @@ class Field
         @cards_hash.select {|position, card| card&.has_same_month?(put_card)}.keys
     end
     
-    def remove_card(put_card: nil, position: 0)
+    def remove_card(put_card: nil, position: -1)
         raise RuntimeError.new("対象のカードと同月のカードはposition:#{position}にありません") unless self.can_get?(put_card)
         temp = @cards_hash[position]
         @cards_hash[position] = nil
@@ -134,8 +122,8 @@ class Field
 end
 
 class Hand
-    def initialize
-        @cards = []
+    def initialize(cards)
+        @cards = cards
     end
     
     def add_card(card)
@@ -147,7 +135,7 @@ class Hand
     end
     
     def info
-        @cards.map {|card| card.info}
+        @cards.map(&:info)
     end
 end
 
@@ -205,47 +193,29 @@ class DeckToFieldAfterRewardUseCase
     end
 end
 
-class Player
-    def initialize(deck, field)
-        @deck = deck
-        @field = field
-        @cards = Range.new(1,8).map{|i| self.draw}
+class GameFactory
+    def self::new_game(deck, field, hand)
+        {
+            draw: DrawUseCase.new(hand, deck),
+            put_hand: PutHandUseCase.new(hand, field),
+            deck_to_field: DeckToFieldUseCase.new(deck, field),
+            deck_to_field_after: DeckToFieldAfterRewardUseCase.new(deck, field)
+        }
     end
     
-    def draw
-        @cards << @deck.get_card
-    end
-    
-    def put_card(card_id:-1)
-        #card = @cards.delete_if {|card| card.has_id?(card_id)}
-        card = @cards[0]
-        @field.receive_card(card)
-    end
-    
-    def info
-        @cards.map(&:info)
-    end
 end
 
-#メイン処理イメージ
-class PlayerFactory
-    def self::create(player_num)
-        deck = Deck.new
-        field = Field.new(deck)
-        Range.new(1, player_num).map{|i| Player.new(deck, field)}
-    end
-end
+cards = Range.new(1,4).each_with_object([]) {|_, obj| 
+    obj.concat Range.new(1,12).map{ |j| Card.new(j, CardType::NORMAL) }
+}
 
-player1, player2 = PlayerFactory.create(2)
+deck = Deck.new(cards)
+field = Field.new(Range.new(1,8).map{|i| deck.get_card})
+hand = Hand.new(Range.new(1,8).map{|i| deck.get_card})
 
-player1 = Player.new(deck, field)
-player2 = Player.new(deck, field)
+commands = GameFactory.new_game(deck, field, hand)
+commands[:draw].execute
+puts field.info
+puts hand.info
 
-player1.ready
-player2.ready
 
-player1.draw
-player1.put_card(card_id:0)
-
-player2.draw
-player2.put_card(card_id:2)
