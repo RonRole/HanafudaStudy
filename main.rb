@@ -205,23 +205,47 @@ class DeckToFieldAfterRewardUseCase
     end
 end
 
-deck = Deck.new
-field = Field.new
-hand = Hand.new
-
-draw = DrawUseCase.new(hand, deck)
-deck_to_field = DeckToFieldUseCase.new(deck, field)
-deck_to_field_after = DeckToFieldAfterRewardUseCase.new(deck,field)
-put_hand = PutHandUseCase.new(hand, field) 
-
-8.times do
-    draw.execute
+class Player
+    def initialize(deck, field)
+        @deck = deck
+        @field = field
+        @cards = Range.new(1,8).map{|i| self.draw}
+    end
+    
+    def draw
+        @cards << @deck.get_card
+    end
+    
+    def put_card(card_id:-1)
+        #card = @cards.delete_if {|card| card.has_id?(card_id)}
+        card = @cards[0]
+        @field.receive_card(card)
+    end
+    
+    def info
+        @cards.map(&:info)
+    end
 end
 
-8.times do
-    deck_to_field.execute
+#メイン処理イメージ
+class PlayerFactory
+    def self::create(player_num)
+        deck = Deck.new
+        field = Field.new(deck)
+        Range.new(1, player_num).map{|i| Player.new(deck, field)}
+    end
 end
 
-puts put_hand.execute(hand_index: 0, field_index: 5)
-puts deck_to_field_after.execute
-puts field.info
+player1, player2 = PlayerFactory.create(2)
+
+player1 = Player.new(deck, field)
+player2 = Player.new(deck, field)
+
+player1.ready
+player2.ready
+
+player1.draw
+player1.put_card(card_id:0)
+
+player2.draw
+player2.put_card(card_id:2)
